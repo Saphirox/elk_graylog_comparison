@@ -1,0 +1,1 @@
+siege -c 100 -t 10M http://127.0.0.1:5000/employees
