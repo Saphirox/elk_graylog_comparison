@@ -54,7 +54,7 @@ services:
     command: >
       --slow_query_log=1
       --slow_query_log_file=/var/log/mysql/mysql-slow.log
-      --long_query_time=2
+      --long_query_time=10
     networks:
       - elk
 
@@ -123,6 +123,67 @@ services:
       - elasticsearch
     restart: unless-stopped
 
+  telegraf:
+    container_name: telegraf
+    image: telegraf:latest
+    user: root
+    privileged: true
+    volumes:
+    - ./telegraf/etc/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - influxdb
+    links:
+      - influxdb
+    ports:
+    - '127.0.0.1:8125:8125/udp'
+    entrypoint: /bin/bash -c "chmod 666 /var/run/docker.sock && /entrypoint.sh telegraf"
+    networks:
+      - elk
+
+  influxdb:
+    container_name: influxdb
+    image: influxdb:1.8
+    env_file: configuration.env
+    ports:
+      - '127.0.0.1:8086:8086'
+    volumes:
+      - ./:/imports
+      - influxdb_data:/var/lib/influxdb
+    networks:
+      - elk
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:8.0.2
+    depends_on:
+      - influxdb
+    env_file: configuration.env
+    links:
+      - influxdb
+    ports:
+      - '127.0.0.1:3000:3000'
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/:/etc/grafana/provisioning/
+      - ./grafana/dashboards/:/var/lib/grafana/dashboards/
+    networks:
+      - elk
+
+
+  chronograf:
+    image: chronograf:latest
+    container_name: chronograf
+    depends_on:
+      - influxdb
+    ports:
+      - "8888:8888"
+    networks:
+      - elk
+    environment:
+      - CHRONOGRAF_PUBLIC_URL=http://localhost:8888
+      - INFLUXDB_URL=http://influxdb:8086
+
 networks:
   elk:
     driver: bridge
@@ -130,3 +191,5 @@ networks:
 volumes:
   elasticsearch:
   mysql_data:
+  grafana_data:
+  influxdb_data:

@@ -84,7 +84,7 @@ services:
     command: >
       --slow-query-log=1 
       --slow-query-log-file=/var/log/mysql/mysql-slow.log 
-      --long-query-time=1
+      --long-query-time=10
     networks:
       graylog-network:
 
